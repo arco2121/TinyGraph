@@ -41,19 +41,27 @@ class TinyGraph
         }
     }
     
-    AddLine(vertex1, vertex2, weight = 1, direction = null)
+    AddLine(vertex1, vertex2, weight = 1, direction = null, oneway = true)
     {
         const one = this.isValid(this.FindVertex(vertex1))
         const two = this.isValid(this.FindVertex(vertex2))
-        if (one && two) 
+        if(this.oriented)
+        {
+            if (one && two) 
+            {
+                this.map[this.FindVertex(vertex1)][this.FindVertex(vertex2)] = new TinyLine(weight, direction);
+                if(!oneway)
+                    this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction));
+            } 
+            else 
+            {
+                console.error("Vertex not found");
+            }
+        }
+        else
         {
             this.map[this.FindVertex(vertex1)][this.FindVertex(vertex2)] = new TinyLine(weight, direction);
-            if(this.oriented == false)
-                this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction));
-        } 
-        else 
-        {
-            console.error("Vertex not found");
+            this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction));
         }
     }
 
@@ -99,7 +107,7 @@ class TinyGraph
         canvas.height = height;
         const center = {x: width / 2, y: height / 2};
         const radius = Math.min(width, height) / 3;
-        let dim = Math.min(canvas.width, canvas.height) / 15;
+        let dim = (2*Math.PI*(Math.min(canvas.width, canvas.height) / 15)) / this.vertexs.length;
         const position = () => {
             for(let i = 0; i<this.vertexs.length; i++)
             {
@@ -109,19 +117,24 @@ class TinyGraph
                 this.vertexs[i].info.x = x;
                 this.vertexs[i].info.y = y;
                 this.vertexs[i].info.angle = dim;
+            }
+        }
+        const colors = () =>{
+            for(let i = 0; i<this.vertexs.length; i++)
+            {
                 this.vertexs[i].info.invertcolor = false
             }
         }
         const ctx = canvas.getContext("2d");
         const load = (colorfill = colorfil, colorline = colorlin,border) => 
         {
-            const dim = Math.min(width, height) / 15;
+            dim = (2*Math.PI*(Math.min(canvas.width, canvas.height) / 15)) / this.vertexs.length;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.strokeStyle = colorline;
             ctx.font = `${Math.log(dim) * 5}px `;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.lineWidth = border -2;
+            ctx.lineWidth = border - 2;
             for (let i = 0; i < this.map.length; i++) 
             {
                 for (let j = 0; j < this.map[i].length; j++) 
@@ -139,9 +152,8 @@ class TinyGraph
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         const midX = (startX + endX) / 2;
                         const midY = (startY + endY) / 2;
-                        const offset = 10;
-        
-                        if (distance > 7 * dim) 
+                        const offset = dim/2;
+                        if (distance > 8 * dim) 
                         {
                             const controlX = midX - dy / 4; 
                             const controlY = midY + dx / 4;
@@ -149,14 +161,35 @@ class TinyGraph
                             ctx.moveTo(startX, startY);
                             ctx.quadraticCurveTo(controlX, controlY, endX, endY);
                             ctx.stroke();
-        
                             const curveMidX = (startX + endX + controlX) / 3;
                             const curveMidY = (startY + endY + controlY) / 3;
                             const textOffsetX = curveMidX + offset * (dy / distance);
                             const textOffsetY = curveMidY - offset * (dx / distance); 
-        
                             ctx.fillStyle = colorline;
                             ctx.fillText(weight, textOffsetX, textOffsetY);
+                            ctx.closePath();
+                            const t = 0.9;
+                            const curveEndX = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * controlX + t * t * endX;
+                            const curveEndY = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * controlY + t * t * endY;
+
+                            const dxCurve = curveEndX - controlX;
+                            const dyCurve = curveEndY - controlY;
+                            const angleCurve = Math.atan2(dyCurve, dxCurve);
+
+                            const headlen = (border * 3)
+                            ctx.beginPath();
+                            ctx.moveTo(curveEndX, curveEndY);
+                            ctx.lineTo(
+                                curveEndX - headlen * Math.cos(angleCurve + Math.PI / 6),
+                                curveEndY - headlen * Math.sin(angleCurve + Math.PI / 6)
+                            );
+                            ctx.lineTo(
+                                curveEndX - headlen * Math.cos(angleCurve - Math.PI / 6),
+                                curveEndY - headlen * Math.sin(angleCurve - Math.PI / 6)
+                            );
+                            ctx.closePath();
+                            ctx.fillStyle = colorline;
+                            ctx.fill();
                         } 
                         else 
                         {
@@ -168,6 +201,25 @@ class TinyGraph
                             const textOffsetY = midY - offset * (dx / distance);
                             ctx.fillStyle = colorline;
                             ctx.fillText(weight, textOffsetX, textOffsetY);
+                            ctx.closePath();
+                            const angle = Math.atan2(endY - startY, endX - startX);
+                            const arrowX = endX - dim * Math.cos(angle);
+                            const arrowY = endY - dim * Math.sin(angle);
+                            ctx.beginPath();
+                            ctx.moveTo(arrowX, arrowY);
+                            const headlen = (border * 2)
+                            ctx.lineTo(
+                                arrowX - headlen * Math.cos(angle + Math.PI / 6),
+                                arrowY - headlen * Math.sin(angle + Math.PI / 6)
+                            );
+                            ctx.lineTo(
+                                arrowX - headlen * Math.cos(angle - Math.PI / 6),
+                                arrowY - headlen * Math.sin(angle - Math.PI / 6)
+                            );
+                            ctx.closePath();
+                            ctx.fillStyle = colorline;
+                            ctx.fill();
+                            ctx.stroke();
                         }
                     }
                 }
@@ -181,7 +233,7 @@ class TinyGraph
                 {
                     ctx.fillStyle = colorline;
                     ctx.fill();
-                    ctx.strokeStyle = colorfill;
+                    ctx.strokeStyle = colorline;
                     ctx.stroke();
                     ctx.fillStyle = colorfill;
                 }
@@ -236,12 +288,12 @@ class TinyGraph
         })
         //Se si vogliono applicare modifiche di stile
 
-        return {canvas : canvas, ctx : ctx, reload : load, reloadposition : position, selectedColor : colorlin, valid : true};
+        return {canvas : canvas, ctx : ctx, reloadcolors : colors, reload : () => {load(colorfil,colorlin,boder); colors();}, reloadposition : position, selectedColor : colorlin, valid : true};
     }
 
     FindPath(startVertex, endVertex, canvasOption = {}) 
     {
-        return this.FindPaths(startVertex, endVertex, 1, canvasOption)[0];
+        return this.FindPaths(startVertex, endVertex, 1, canvasOption)[0] || {};
     }
 
     FindPaths(startVertex, endVertex, k = 3, canvasOption = {}) 
@@ -289,6 +341,7 @@ class TinyGraph
         }
 
         if (canvasOption.valid) {
+            canvasOption.reloadcolors();
             paths.forEach(({ path }) => {
                 path.forEach(element => {
                     if (element instanceof TinyVertex) {
