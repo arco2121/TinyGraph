@@ -18,6 +18,53 @@ class TinyGraph
         }
     }
 
+    static LoadMatrix(matrix)
+    {
+        let map = new TinyGraph(true)
+        for(let i = 0;i<matrix.length;i++)
+        {
+            map.AddVertex(new TinyVertex(i+1,""))
+        }
+        for(let i = 0;i<matrix.length;i++)
+        {
+            for(let j = 0;j<matrix.length[i];j++)
+            {
+                if(matrix[i][j] != 0)
+                {
+                    map.AddLine(i,j,matrix[i][j],"","",true)
+                }
+            }
+        }
+        return map
+    }
+
+    static GenGraph()
+    {
+        let mem = [0]
+        let graph = new TinyGraph(false)
+        const h = Math.floor(Math.random() * (13 - 5) + 5)
+        for(let i = 0; i<h;i++)
+        {
+            let m = 0;
+            while(mem.includes(m)) 
+            {
+                m = Math.floor(Math.random() * (501 - 1) + 1); 
+            }
+            graph.AddVertex(new TinyVertex(m))
+            mem.push(m)
+        }
+        graph.vertexs.forEach((v)=>{
+            graph.vertexs.forEach(vv => {
+                if(Math.random() > 0.5)
+                {
+                    graph.AddLine(v,vv,Math.floor(Math.random() * (51 - 1) + 1),"","",true);
+                }
+            })
+        })
+        
+        return graph;
+    }
+
     AddVertex(vertex)
     {
         if(!(vertex instanceof TinyVertex))
@@ -26,6 +73,12 @@ class TinyGraph
             vertex.number = this.vertexs.length;
         this.vertexs.push(vertex);
         this.map.push(Array.from({ length: this.map.length }, () => new TinyLine()));
+        this.map.forEach(row => {
+            while (row.length < this.map.length)
+            {
+                row.push(new TinyLine());
+            }
+        });
     }
 
     RemoveVertex(vertex)
@@ -41,7 +94,7 @@ class TinyGraph
         }
     }
     
-    AddLine(vertex1, vertex2, weight = 1, direction = null, oneway = true)
+    AddLine(vertex1, vertex2, weight = 1, direction = null, adress = "", oneway = true)
     {
         const one = this.isValid(this.FindVertex(vertex1))
         const two = this.isValid(this.FindVertex(vertex2))
@@ -49,9 +102,9 @@ class TinyGraph
         {
             if (one && two) 
             {
-                this.map[this.FindVertex(vertex1)][this.FindVertex(vertex2)] = new TinyLine(weight, direction);
+                this.map[this.FindVertex(vertex1)][this.FindVertex(vertex2)] = new TinyLine(weight, direction, adress);
                 if(!oneway)
-                    this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction));
+                    this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction), adress);
             } 
             else 
             {
@@ -60,8 +113,11 @@ class TinyGraph
         }
         else
         {
-            this.map[this.FindVertex(vertex1)][this.FindVertex(vertex2)] = new TinyLine(weight, direction);
-            this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction));
+            if (one && two) 
+            {
+                this.map[this.FindVertex(vertex1)][this.FindVertex(vertex2)] = new TinyLine(weight, direction, adress);
+                this.map[this.FindVertex(vertex2)][this.FindVertex(vertex1)] = new TinyLine(weight, TinyLine.Opposite(direction), adress);
+            }
         }
     }
 
@@ -83,7 +139,7 @@ class TinyGraph
     {
         for(let i = 0; i<this.vertexs.length; i++)
         {
-            if(this.vertexs[i].name == vertex || this.vertexs[i].adress == vertex || this.vertexs[i].id == vertex)
+            if(this.vertexs[i].name == vertex || this.vertexs[i] == vertex || this.vertexs[i].number == vertex ||this.vertexs[i].adress == vertex || this.vertexs[i].id == vertex)
             {
                 return this.vertexs[i].number;
             }
@@ -102,7 +158,11 @@ class TinyGraph
 
     toCanvas(width = 100, height = 100, boder = 3, colorlin = "black", colorfil = "lightblue", where = document.body)
     {
+        const element = where.querySelector("#TinyGraphCanvas");
+        if (element) 
+            element.remove();
         const canvas = document.createElement("canvas");
+        canvas.id = "TinyGraphCanvas"
         canvas.width = width;
         canvas.height = height;
         const center = {x: width / 2, y: height / 2};
@@ -139,7 +199,7 @@ class TinyGraph
             {
                 for (let j = 0; j < this.map[i].length; j++) 
                 {
-                    if (this.map[i][j].weight != 0) 
+                    if(this.map[i][j].weight != 0) 
                     {
                         const startX = this.vertexs[i].info.x;
                         const startY = this.vertexs[i].info.y;
@@ -255,14 +315,17 @@ class TinyGraph
         load(colorfil,colorlin,boder);
         where.appendChild(canvas);  
         let snode = null;
+        const getNode = (offsetX,offsetY) => {
+            return this.vertexs.find(node =>  Math.sqrt((offsetX - node.info.x) ** 2 + (offsetY - node.info.y) ** 2) < node.info.angle)
+        }
         /*Touch*/
         canvas.addEventListener("mousedown", (e) => {
             const {offsetX, offsetY} = e;
-            snode = this.vertexs.find(node =>  Math.sqrt((offsetX - node.info.x) ** 2 + (offsetY - node.info.y) ** 2) < node.info.angle)
+            snode = getNode(offsetX,offsetY)
         });
         canvas.addEventListener("touchstart", (e) => {
             const {offsetX, offsetY} = e;
-            snode = this.vertexs.find(node =>  Math.sqrt((offsetX - node.info.x) ** 2 + (offsetY - node.info.y) ** 2) < node.info.angle)
+            snode = getNode(offsetX,offsetY)
         });
         canvas.addEventListener("mousemove", (event) => {
             if(snode) 
@@ -288,7 +351,7 @@ class TinyGraph
         })
         //Se si vogliono applicare modifiche di stile
 
-        return {canvas : canvas, ctx : ctx, reloadcolors : colors, reload : () => {load(colorfil,colorlin,boder); colors();}, reloadposition : position, selectedColor : colorlin, valid : true};
+        return {canvas : canvas, ctx : ctx, getnode : (e) => { const{offsetX,offsetY} = e; getNode(offsetX,offsetY) }, reloadcolors : colors, reload : () => {load(colorfil,colorlin,boder); colors();}, reloadposition : position, selectedColor : colorlin, valid : true};
     }
 
     FindPath(startVertex, endVertex, canvasOption = {}) 
@@ -369,10 +432,11 @@ class TinyGraph
 }
 class TinyLine
 {
-    constructor(weight = 0,direction = null)
+    constructor(weight = 0,direction = null,address = "")
     {
         this.direction = direction;
         this.weight = weight;
+        this.address = address
     }
 
     static Opposite(direction)
@@ -395,7 +459,8 @@ class TinyVertex
         this.name = name;
         this.id = (() => {
             let u = ""
-            for(let i = 0; i<Math.floor(Math.random() * (alphabet.length - 10) + 10); i++)
+            const h = Math.floor(Math.random() * (alphabet.length - 10) + 10)
+            for(let i = 0; i<h; i++)
             {
                 u+= alphabet[Math.floor(Math.random() * alphabet.length)]
             }

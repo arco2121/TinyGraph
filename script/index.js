@@ -1,22 +1,21 @@
-const graph = new TinyGraph(false, new TinyVertex("A"), new TinyVertex("B"), new TinyVertex("C"),new TinyVertex("D"), new TinyVertex("E"), new TinyVertex("F"));
-graph.AddLine("B","C",10,null,true)
-graph.AddLine("A","B",17,null,true)
-graph.AddLine("A","D",20,null,true)
-graph.AddLine("F","A",5,null,true)
-graph.AddLine("E","F",2,null,true)
-graph.AddLine("D","C",10,null,true)
+let graph = TinyGraph.GenGraph();
 console.log(graph.toConsole())
-const canvasOption = graph.toCanvas(500,500,5,"white","black",document.querySelector(".graph"))
+let canvasOption = graph.toCanvas(500,500,3,"white","black",document.querySelector(".graph"))
 canvasOption.canvas.style = "border: 5px solid white; margin: 10px; border-radius: 25px;"
-
+let vertex1 = 0
+let vertex2 = graph.vertexs.length -1
 document.getElementById("reload").addEventListener("click",()=>{
     canvasOption.reloadposition()
     canvasOption.reload()
+    graph = TinyGraph.GenGraph();
+    vertex2 = graph.vertexs.length - 1
+    canvasOption = graph.toCanvas(500,500,3,"white","black",document.querySelector(".graph"))
+    canvasOption.canvas.style = "border: 5px solid white; margin: 10px; border-radius: 25px;"
 })
 
-document.getElementById("find").addEventListener("click",()=>{
-    console.log(graph.FindPath("D","E",canvasOption))
+document.getElementById("find").addEventListener("click",(e)=>{
+    console.log(graph.FindPath(vertex1,vertex2,canvasOption))
 })
 document.getElementById("finds").addEventListener("click",()=>{
-    console.log(graph.FindPaths("D","E",3,canvasOption))
+    console.log(graph.FindPaths(vertex1,vertex2,5,canvasOption))
 })
